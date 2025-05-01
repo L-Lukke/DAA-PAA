@@ -119,6 +119,12 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
         best.append(start)
     return best
 
+
+#  ============================================
+#  ======               WIP              ======
+#  ============================================
+
+
 def greedy_dfs_cycle(G, start):
     visited = {start}
     path = [start]
@@ -208,13 +214,13 @@ if __name__ == "__main__":
     print("  4- Greedy DFS (WIP - DO NOT USE)")
     print("  5- Greedy Random-Restart (WIP - DO NOT USE)")
     print("  6- Simulated Annealing (WIP - DO NOT USE)")
-    escolha = input("> ").strip().lower()
+    choice = input("  > ").strip().lower()
 
     valid = {"1","2","3","4","5","6"}
-    if escolha in ("all"):
+    if choice in ("all"):
         algs = sorted(valid)
     else:
-        algs = sorted(token for token in escolha.replace(" ", "").split(",") if token in valid)
+        algs = sorted(token for token in choice.replace(" ", "").split(",") if token in valid)
 
     if not algs:
         print("No valid option selected. Exiting.")
@@ -228,6 +234,7 @@ if __name__ == "__main__":
         "5": random_restart_greedy,
         "6": simulated_annealing_cycle,
     }
+    
     names = {
         "1": "Brute Force",
         "2": "Branch-and-Bound",
