@@ -1,6 +1,5 @@
 import sys
 import networkx as nx
-import itertools
 from collections import deque
 import math
 import random
@@ -11,119 +10,182 @@ def load_graph(path):
     with open(path, 'r', encoding='utf-8') as f:
         for line in f:
             line = line.strip()
-            if not line or line.lower().startswith("line"):
+            if not line or line.lower().startswith("line"): # skip empty/header lines
                 continue
-            a, b = line.split()[:2]
+            a, b = line.split()[:2] # expect at least two tokens per line: node_a node_b
             G.add_edge(a, b)
     return G
 
+
 def brute_force_longest_cycle(G, start):
+    """
+    find the longest simple cycle starting and ending at any given node by exhaustive DFS:
+    - maintains a global best_path list (constantly re-evaluated)
+    - explores every possible path without revisiting nodes
+    - checks for a return edge at each extension
+    """
     best_path = []
+
     def dfs(path, visited):
         curr = path[-1]
         for w in G.neighbors(curr):
-            if w == start and len(path) > 1:
-                if len(path) > len(best_path):
-                    best_path[:] = path
-            elif w not in visited:
-                visited.add(w); path.append(w)
-                dfs(path, visited)
-                path.pop(); visited.remove(w)
-    dfs([start], {start})
+            if w == start and len(path) > 1: # found a cycle
+                if len(path) > len(best_path): # its greater than the current best
+                    best_path[:] = path[:]  # current path becomes best path
+            elif w not in visited: # there is still a neighbour that wasn't visited - recurse: extend path to neighbour w
+                visited.add(w)
+                path.append(w)
+
+                dfs(path, visited) # backtrack - removing the last step from the recursion (last node added to path and trying again with new neighbours (if available))
+
+                path.pop()
+                visited.remove(w)
+
+    dfs([start], {start}) # initalization of dfs with given node
     return best_path
 
+
 def branch_and_bound_longest_cycle(G, start):
-    best = {'length':0, 'path':[]}
-    adj = {u:list(G.neighbors(u)) for u in G.nodes()}
+    """
+    find the longest simple cycle using branch-and-bound pruning:
+    - precompute adjacency lists for speed (no need to G.neighbors(x) every recursion/loop)
+    - reachable_count(u, vis) estimates how many additional nodes are reachable from u without revisiting those already in the current path
+    - prune recursion when current_length + reachable_count <= best_length (in other words, when the current path will not result in beating the current best in its best case)
+    """
+    best = {'length': 0, 'path': []}
+    adj = {u: list(G.neighbors(u)) for u in G.nodes()} # convert the relation node-neighbour to lists for every node
+
     def reachable_count(u, vis):
-        seen = set(vis); q = deque([u]); seen.add(u); cnt = 1
+        """
+        upper bound function: a simple BFS that counts all reachable nodes.
+        """
+        seen = set(vis) # copy in all the nodes already on your current path, so you never count them again.
+        q = deque([u]) # start a BFS (in the form of a double-ended queue, to pop the already explored nodes - in the left - and add its neighbours - in the right) from current node.
+        seen.add(u)
+        cnt = 0
+        
         while q:
-            x = q.popleft()
-            for y in adj[x]:
+            x = q.popleft() # take the oldest node
+            for y in adj[x]: # iterate through its neighbours
                 if y not in seen:
-                    seen.add(y); q.append(y); cnt += 1
+                    seen.add(y)  # mark it so we don’t revisit it,
+                    q.append(y)  # enqueue it for further exploration
+                    cnt += 1 
         return cnt
+
     def dfs(path):
-        curr = path[-1]; L = len(path)
-        if L + reachable_count(curr, path) - 1 <= best['length']:
-            return
+        curr = path[-1]
+
+        if len(path) + reachable_count(curr, path) <= best['length']:
+            return # if even the optimistic reachable count can't beat current best, stop recursion
+
         for w in adj[curr]:
-            if w == start and L > 1:
-                if L > best['length']:
-                    best['length'], best['path'] = L, path.copy()
+            if w == start and len(path) > 1: # found a cycle
+                if len(path) > best['length']: # its greater than the current best
+                    best['length'] = len(path) # current length becomes best lenght
+                    best['path'] = path.copy() # current path becomes best path
             elif w not in path:
-                path.append(w); dfs(path); path.pop()
+                path.append(w)
+                dfs(path) # backtrack - removing the last step from the recursion (last node added to path and trying again with new neighbours (if available))
+                path.pop()
+
     dfs([start])
     return best['path']
 
+
 def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=0.2):
+    """
+    heuristic search using a genetic algorithm:
+    - randomly initialize a population of simple paths starting at `start`.
+    - fitness = path_length + 1 if it can close to a cycle, else path_length.
+    - tournament selection of size 2.
+    - single-point crossover at a common node.
+    - mutation: truncate and randomly extend the path.
+    - keep track of best solution over generations.
+    """
     def random_path():
+        """Generate a random simple path starting at `start` by random walks."""
         visited = {start}
         path = [start]
         curr = start
         while True:
+            # Choose among unvisited neighbors
             cands = [w for w in G.neighbors(curr) if w not in visited]
-            if not cands: break
+            if not cands:
+                break
             nxt = random.choice(cands)
             visited.add(nxt)
             path.append(nxt)
             curr = nxt
         return path
+
     def fitness(path):
+        """Higher fitness for longer paths, plus a bonus for closable cycles."""
         return len(path) + (1 if start in G.neighbors(path[-1]) else 0)
-    # inicializa população
+
+    # Initialize population
     pop = [random_path() for _ in range(pop_size)]
     best = max(pop, key=fitness)
+
     for _ in range(generations):
-        # seleção por torneio
+        # Selection: tournament of size 2
         new_pop = []
         for _ in range(pop_size):
             a, b = random.sample(pop, 2)
             new_pop.append(a if fitness(a) > fitness(b) else b)
-        # crossover
+
+        # Crossover
         children = []
         for i in range(0, pop_size, 2):
             p1, p2 = new_pop[i], new_pop[i+1]
+            # Find common intermediate nodes (excluding the first)
             common = list(set(p1[1:]) & set(p2[1:]))
             if common:
                 c = random.choice(common)
                 i1, i2 = p1.index(c), p2.index(c)
+                # Splice parents at the crossover point c
                 child = p1[:i1] + p2[i2:]
+                # Remove duplicates while preserving order
                 seen = set()
                 child = [x for x in child if not (x in seen or seen.add(x))]
                 children.append(child)
             else:
+                # No common node -> keep parents unchanged
                 children.extend([p1, p2])
-        # mutação
+
+        # Mutation and form new population
         pop = []
         for path in children:
             if random.random() < mutation_rate:
+                # Truncate at random cut point and re-extend randomly
                 idx = random.randrange(1, len(path))
                 visited = set(path[:idx+1])
                 new_path = path[:idx+1]
                 curr = new_path[-1]
                 while True:
                     cands = [w for w in G.neighbors(curr) if w not in visited]
-                    if not cands: break
+                    if not cands:
+                        break
                     nxt = random.choice(cands)
                     visited.add(nxt)
                     new_path.append(nxt)
                     curr = nxt
                 path = new_path
             pop.append(path)
-        # atualiza melhor
+
+        # Update best individual
         cand = max(pop, key=fitness)
         if fitness(cand) > fitness(best):
             best = cand
+
+    # Close the cycle if possible
     if start in G.neighbors(best[-1]):
         best.append(start)
     return best
 
-
-#  ============================================
-#  ======               WIP              ======
-#  ============================================
-
+#  ===========================================
+#  ======     not working fix later     ======
+#  ===========================================
 
 def greedy_dfs_cycle(G, start):
     visited = {start}
@@ -139,6 +201,10 @@ def greedy_dfs_cycle(G, start):
         next_node = max(cands, key=lambda x: G.degree(x))
         visited.add(next_node)
         path.append(next_node)
+
+#  ===========================================
+#  ======     not working fix later     ======
+#  ===========================================
 
 def random_restart_greedy(G, start, iters=100):
     best = []
@@ -161,6 +227,10 @@ def random_restart_greedy(G, start, iters=100):
         if len(path) > len(best):
             best = path.copy()
     return best
+
+#  ===========================================
+#  ======     not working fix later     ======
+#  ===========================================
 
 def simulated_annealing_cycle(G, start, iters=1000, T0=1.0, alpha=0.995):
     curr = greedy_dfs_cycle(G, start)
@@ -203,7 +273,7 @@ if __name__ == "__main__":
     start = input("Choose initial station (leave blank to test all): ").strip()
 
     if start and start not in G:
-        print(f"No '{start}' station.")
+        print(f"No '{start}' station in file.")
         sys.exit(1)
 
     # Seleção de múltiplos algoritmos

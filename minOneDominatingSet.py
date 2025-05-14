@@ -65,8 +65,8 @@ if __name__ == "__main__":
 
     # Menu de choice
     print("Select algorithm(s) to run (\"all\" to run all - NOT RECOMMENDED) (comma separated):")
-    print("  1- Brute Force (probably won't compute)")
-    print("  2- Branch-and-Bound")
+    print("  1- Brute Force (this may take _actually_ forever)")
+    print("  2- Branch-and-Bound (this may take _almost_ forever)")
     print("  3- Greedy")
     choice = input("> ").strip().lower()
 
