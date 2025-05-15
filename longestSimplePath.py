@@ -97,7 +97,7 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
     """
     heuristic search using a genetic algorithm:
     - randomly initialize a population of simple paths starting at a given `start` node.
-    - fitness = path_length + 1 if it can close to a cycle, else path_length.
+    - fitness = path_length it can close to a cycle, else 0.
     - tournament selection of size 2.
     - single-point crossover at a common node.
     - mutation: truncate and randomly extend the path.
@@ -117,12 +117,12 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
             path.append(nxt)
             curr = nxt
         return path
-    
-    cycle_bonus = max(1, len(G) // 20)
 
-    def fitness(path): # fitness equals path size plus a 1 point bonus per 20 nodes of the graph for closable cycles.
-        return len(path) + (cycle_bonus if start in G.neighbors(path[-1]) else 0)
-
+    def fitness(path): # fitness equals path size for closable cycles.
+        if start in G.neighbors(path[-1]):
+            return len(path)
+        else:
+            return 0
 
     pop = [random_path() for _ in range(pop_size)] # initialize population of random walks of size `pop_size` (adjustable parameter)
     best = max(pop, key=fitness) # take best path (longest and/or closable)
