@@ -24,6 +24,7 @@ def brute_force_longest_cycle(G, start):
     - explores every possible path without revisiting nodes
     - checks for a return edge at each extension
     """
+
     best_path = []
 
     def dfs(path, visited):
@@ -52,13 +53,12 @@ def branch_and_bound_longest_cycle(G, start):
     - reachable_count(u, vis) estimates how many additional nodes are reachable from u without revisiting those already in the current path
     - prune recursion when current_length + reachable_count <= best_length (in other words, when the current path will not result in beating the current best in its best case)
     """
+
     best = {'length': 0, 'path': []}
     adj = {u: list(G.neighbors(u)) for u in G.nodes()} # convert the relation node-neighbour to lists for every node
 
-    def reachable_count(u, vis):
-        """
-        upper bound function: a simple BFS that counts all reachable nodes.
-        """
+    def reachable_count(u, vis): # upper bound function: a simple BFS that counts all reachable nodes.
+
         seen = set(vis) # copy in all the nodes already on your current path, so you never count them again.
         q = deque([u]) # start a BFS (in the form of a double-ended queue, to pop the already explored nodes - in the left - and add its neighbours - in the right) from current node.
         seen.add(u)
@@ -96,71 +96,67 @@ def branch_and_bound_longest_cycle(G, start):
 def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=0.2):
     """
     heuristic search using a genetic algorithm:
-    - randomly initialize a population of simple paths starting at `start`.
+    - randomly initialize a population of simple paths starting at a given `start` node.
     - fitness = path_length + 1 if it can close to a cycle, else path_length.
     - tournament selection of size 2.
     - single-point crossover at a common node.
     - mutation: truncate and randomly extend the path.
     - keep track of best solution over generations.
     """
-    def random_path():
-        """Generate a random simple path starting at `start` by random walks."""
+
+    def random_path(): # generate a random simple path starting at `start` node by random walks.
         visited = {start}
         path = [start]
         curr = start
         while True:
-            # Choose among unvisited neighbors
             cands = [w for w in G.neighbors(curr) if w not in visited]
             if not cands:
                 break
-            nxt = random.choice(cands)
+            nxt = random.choice(cands)  # choose next node of walk randomly among unvisited neighbour candidates
             visited.add(nxt)
             path.append(nxt)
             curr = nxt
         return path
+    
+    cycle_bonus = max(1, len(G) // 20)
 
-    def fitness(path):
-        """Higher fitness for longer paths, plus a bonus for closable cycles."""
-        return len(path) + (1 if start in G.neighbors(path[-1]) else 0)
+    def fitness(path): # fitness equals path size plus a 1 point bonus per 20 nodes of the graph for closable cycles.
+        return len(path) + (cycle_bonus if start in G.neighbors(path[-1]) else 0)
 
-    # Initialize population
-    pop = [random_path() for _ in range(pop_size)]
-    best = max(pop, key=fitness)
 
-    for _ in range(generations):
-        # Selection: tournament of size 2
+    pop = [random_path() for _ in range(pop_size)] # initialize population of random walks of size `pop_size` (adjustable parameter)
+    best = max(pop, key=fitness) # take best path (longest and/or closable)
+
+    for _ in range(generations): # each iteration is a generation
         new_pop = []
+        # new_pop array population will be done through size 2 tourament
         for _ in range(pop_size):
-            a, b = random.sample(pop, 2)
-            new_pop.append(a if fitness(a) > fitness(b) else b)
+            a, b = random.sample(pop, 2) # takes 2 individuals a and b from current population
+            new_pop.append(a if fitness(a) > fitness(b) else b) # compare them and select the better fit to append to new population
 
-        # Crossover
         children = []
-        for i in range(0, pop_size, 2):
-            p1, p2 = new_pop[i], new_pop[i+1]
-            # Find common intermediate nodes (excluding the first)
-            common = list(set(p1[1:]) & set(p2[1:]))
+        # creates children through crossover of 2 parents
+        for i in range(0, pop_size, 2): # kind of assumes even array size? idk
+            p1, p2 = new_pop[i], new_pop[i+1] # takes two parents, two consecutive elements in new_pop array
+            common = list(set(p1[1:]) & set(p2[1:])) # find common intermediate nodes ((note that the starting point can not be included as it should be always equal)
             if common:
-                c = random.choice(common)
+                c = random.choice(common) # take a random common corssover point
                 i1, i2 = p1.index(c), p2.index(c)
-                # Splice parents at the crossover point c
-                child = p1[:i1] + p2[i2:]
-                # Remove duplicates while preserving order
-                seen = set()
-                child = [x for x in child if not (x in seen or seen.add(x))]
+                child = p1[:i1] + p2[i2:] # splice parents at the crossover point c
+                seen = set() # create a set of seen nodes
+                child = [x for x in child if not (x in seen or seen.add(x))] # use `seen` set to remove duplicates, each child node is only added if it is not in set 
                 children.append(child)
             else:
-                # No common node -> keep parents unchanged
-                children.extend([p1, p2])
+                children.extend([p1, p2]) # this is the bad case, where there`s no crossover between parents, and so they are copied
 
-        # Mutation and form new population
-        pop = []
+        pop = [] # zeroes population array, as children is doing its job now (funny)
+        # mutation and formation of new population (funny again)
         for path in children:
-            if random.random() < mutation_rate:
-                # Truncate at random cut point and re-extend randomly
-                idx = random.randrange(1, len(path))
-                visited = set(path[:idx+1])
-                new_path = path[:idx+1]
+            if random.random() < mutation_rate: # 20% chance of mutation (parametrized, i just tried it a bunch of times and 20% was the sweetspot)
+                idx = random.randrange(1, len(path)) # choose random cut point in the path
+                visited = set(path[:idx+1]) # maintain visided list to aviod visiting the same node twice
+                new_path = path[:idx+1] # create a new path that is equal to the previous one up until the cut point
+                # now we just complete the path with a random walk
                 curr = new_path[-1]
                 while True:
                     cands = [w for w in G.neighbors(curr) if w not in visited]
@@ -171,15 +167,13 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
                     new_path.append(nxt)
                     curr = nxt
                 path = new_path
-            pop.append(path)
+            pop.append(path) # fills the population array with children (about 20% of them are mutated now)
 
-        # Update best individual
-        cand = max(pop, key=fitness)
+        cand = max(pop, key=fitness) # update best individual
         if fitness(cand) > fitness(best):
             best = cand
 
-    # Close the cycle if possible
-    if start in G.neighbors(best[-1]):
+    if start in G.neighbors(best[-1]): # close the cycle if possible
         best.append(start)
     return best
 
@@ -264,6 +258,11 @@ def simulated_annealing_cycle(G, start, iters=1000, T0=1.0, alpha=0.995):
         best.append(start)
     return best
 
+
+#  ===========================================
+#  ======             main              ======
+#  ===========================================
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print(f"Usage: python {sys.argv[0]} <dataset_file>")
@@ -276,7 +275,6 @@ if __name__ == "__main__":
         print(f"No '{start}' station in file.")
         sys.exit(1)
 
-    # Seleção de múltiplos algoritmos
     print("Select algorithm(s) to run (comma separated) ('all' to use all algorithms (NOT RECOMMENDED)): ")
     print("  1- Brute Force")
     print("  2- Branch-and-Bound")
