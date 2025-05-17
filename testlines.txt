@@ -1,0 +1,28 @@
+line1 gold 7
+la-defense champs-elysees-clemenceau
+champs-elysees-clemenceau concorde
+concorde chatelet
+chatelet bastille
+bastille reuilly---diderot
+reuilly---diderot nation
+nation chateau-de-vincennes
+
+line2 darkblue 9
+porte-dauphine charles-de-gaulle-etoile
+charles-de-gaulle-etoile villiers
+villiers place-de-clichy
+place-de-clichy pigalle
+pigalle barbes-rochechouart
+barbes-rochechouart stalingrad
+stalingrad jaures
+jaures pere-lachaise
+pere-lachaise nation
+
+line3 yellow 7
+pont-de-levallois-becon villiers
+villiers saint-lazare
+saint-lazare opera
+opera reaumur-sebastopol
+reaumur-sebastopol republique
+republique pere-lachaise
+pere-lachaise gallieni

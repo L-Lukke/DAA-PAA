@@ -1,103 +1,51 @@
-line1 lightyellow 7
-la-defense champs-elysees-clemenceau
-champs-elysees-clemenceau concorde
-concorde chatelet
-chatelet bastille
-bastille reuilly---diderot
-reuilly---diderot nation
-nation chateau-de-vincennes
-
-line2 darkblue 9
-porte-dauphine charles-de-gaulle-etoile
-charles-de-gaulle-etoile villiers
-villiers place-de-clichy
-place-de-clichy pigalle
-pigalle barbes-rochechouart
-barbes-rochechouart stalingrad
-stalingrad jaures
-jaures pere-lachaise
-pere-lachaise nation
-
-line3 darkyellow 7
-pont-de-levallois-becon villiers
-villiers saint-lazare
-saint-lazare opera
-opera reaumur-sebastopol
-reaumur-sebastopol republique
-republique pere-lachaise
-pere-lachaise gallieni
-
-line4 darkmagenta 12
-porte-de-clignancourt marcadet-poissonniers
-marcadet-poissonniers barbes-rochechouart
-barbes-rochechouart gare-du-nord
-gare-du-nord gare-de-lest
-gare-de-lest strasbourg-sanint-denis
-strasbourg-sanint-denis reaumur-sebastopol
-reaumur-sebastopol chatelet
-chatelet odeon
-odeon montparnasse-bienvenue
-montparnasse-bienvenue raspail
-raspail denfert-rochereau
-denfert-rochereau porte-dorleans
-
-line5 orange 8
-bobigny-pablo-picasso jaures
-jaures stalingrad
-stalingrad gare-du-nord
-gare-du-nord gare-de-lest
-gare-de-lest republique
-republique bastille
-bastille gare-dausterlitz
-gare-dausterlitz place-ditalie
-
-line6 lightgreen 8
-charles-de-gaulle-etoile la-motte-picquet-grenelle
-la-motte-picquet-grenelle pasteur
-pasteur montparnasse-bienvenue
-montparnasse-bienvenue raspail
-raspail denfert-rochereau
-denfert-rochereau place-ditalie
-place-ditalie daumesnil
-daumesnil nation
-
-line8 lightpink 11
-balard la-motte-picquet-grenelle
-la-motte-picquet-grenelle invalides
-invalides concorde
-concorde madeleine
-madeleine opera
-opera strasbourg-sanint-denis
-strasbourg-sanint-denis republique
-republique bastille
-bastille reuilly---diderot
-reuilly---diderot daumesnil
-daumesnil creteil--prefecture
-
-line10 lightbrown 5
-boulogne-pont-de-st-cloud la-motte-picquet-grenelle
-la-motte-picquet-grenelle duroc
-duroc sevres-babylone
-sevres-babylone odeon
-odeon gare-dausterlitz
-
-line12 darkgreen 9
-porte-de-la-chapelle marcadet-poissonniers
-marcadet-poissonniers pigalle
-pigalle saint-lazare
-saint-lazare madeleine
-madeleine concorde
-concorde sevres-babylone
-sevres-babylone montparnasse-bienvenue
-montparnasse-bienvenue pasteur
-pasteur mairie-dissy
-
-line13 lightblue 8
-chatillon---montrouge montparnasse-bienvenue
-montparnasse-bienvenue duroc
-duroc invalides
-invalides champs-elysees-clemenceau
-champs-elysees-clemenceau saint-lazare
-saint-lazare place-de-clichy
-place-de-clichy gabriel-peri-asnieres---gennevilliers
-place-de-clichy saint-denis---universite
+balard 10 50
+barbes-rochechouart 10 50
+bastille 10 50
+bobigny-pablo-picasso 10 50
+boulogne-pont-de-st-cloud 10 50
+champs-elysees-clemenceau 10 50
+charles-de-gaulle-etoile 10 50
+chateau-de-vincennes 10 50
+chatelet 10 50
+chatillon---montrouge 10 50
+concorde 10 50
+creteil--prefecture 10 50
+daumesnil 10 50
+denfert-rochereau 10 50
+duroc 10 50
+gabriel-peri-asnieres---gennevilliers 10 50
+gallieni 10 50
+gare-dausterlitz 10 50
+gare-de-lest 10 50
+gare-du-nord 10 50
+invalides 10 50
+jaures 10 50
+la-defense 10 50
+la-motte-picquet-grenelle 10 50
+madeleine 10 50
+mairie-dissy 10 50
+marcadet-poissonniers 10 50
+montparnasse-bienvenue 10 50
+nation 10 50
+odeon 10 50
+opera 10 50
+pasteur 10 50
+pere-lachaise 10 50
+pigalle 10 50
+place-de-clichy 10 50
+place-ditalie 10 50
+pont-de-levallois-becon 10 50
+porte-dauphine 10 50
+porte-de-clignancourt 10 50
+porte-de-la-chapelle 10 50
+porte-dorleans 10 50
+raspail 10 50
+reaumur-sebastopol 10 50
+republique 10 50
+reuilly---diderot 10 50
+saint-denis---universite 10 50
+saint-lazare 10 50
+sevres-babylone 10 50
+stalingrad 10 50
+strasbourg-sanint-denis 10 50
+villiers 10 50
