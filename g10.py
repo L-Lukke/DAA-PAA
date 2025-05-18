@@ -484,7 +484,7 @@ def greedy_dfs_cycle(G, start):
 
         return None
     
-# kinda cursed kinda bad, maybe one day i fix these
+# kinda cursed kinda bad, maybe one day i fix these 3 algorithms, but that day is not today!
 
 def simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.9, max_iters=1000):
     """

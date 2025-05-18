@@ -1,213 +1,135 @@
-# Design and Analysis of Algorithms
+**Metro Graph Analysis Tool**
 
-## English
-
-### Overview
-This repository contains Python implementations for two graph problems on a metro network:
-
-1. **Longest Simple Cycle**  
-   Given a starting station, find the maximum‐length simple cycle (tourist route) that starts and ends at the same station without revisiting any intermediate station.
-
-2. **Minimum 1-Dominating Set**  
-   Find the minimum set of stations (kiosks) such that every station is at distance at most one from at least one kiosk.
-
-These scripts were developed as part of the Design and Analysis of Algorithms course at PUC Minas.
+This Python application provides utilities to load and visualize a metro or transit network from plain-text station and line definitions, and to analyze its structure using graph algorithms such as minimum dominating sets and longest simple cycles.
 
 ---
 
-### Requirements
+## Features
 
-- Python 3.7 or later  
-- `networkx` library  
+1. **Graph Loading**
 
-Install with:
+   * Parses station coordinates from a `stations.txt` file.
+   * Reads line definitions (station-to-station connections) from a `lines.txt` file, including line IDs and colors.
+   * Builds an undirected NetworkX graph with station nodes and edges annotated by line information.
 
-```bash
-pip install networkx
-```
+2. **Visualization**
+
+   * Uses Tkinter to render the network on a scalable canvas.
+   * Draws colored line segments and labeled station nodes.
+
+3. **Minimum 1‑Dominating Set**
+
+   * **Brute‑force** search for the smallest set of stations that dominate the network.
+   * **Branch‑and‑Bound** optimized search with lower‑bound pruning.
+   * **Greedy** heuristic algorithm for fast approximations.
+
+4. **Longest Simple Cycle**
+   Multiple strategies to find or approximate the longest simple cycle (starting and ending at a chosen station):
+
+   * Brute‑force DFS
+   * Branch‑and‑Bound with upper‑bound pruning
+   * Genetic algorithm
+   * Greedy depth‑first search
+   * GRASP (Greedy Random‑Restart)
+   * Simulated Annealing (best for complete graphs) (WIP)
+   * Tabu Search (WIP)
+   * Ant Colony Optimization (WIP)
+
+5. **Command‑Line Interface**
+
+   * Menu-driven interface:
+
+     1. Draw the graph
+     2. Compute minimum dominating set(s)
+     3. Compute longest simple cycle(s)
+     4. Exit
+   * Supports running individual or all algorithms, timing their execution.
 
 ---
 
-### Usage
+## Installation and Requirements
 
-#### 1. Longest Simple Path / Cycle
+* Python 3.7+
+* Required packages:
 
-```bash
-python longestSimplePath.py <dataset_file>
-```
-
-- **`<dataset_file>`**: Text file listing edges, one per line, in the format:
+  ```bash
+  pip install networkx
   ```
-  StationA StationB
-  ```
-- The script will prompt for:
-  1. **Starting station** (leave blank to test all stations).
-  2. **Algorithm selection** (comma-separated list):
-     1. Brute Force  
-     2. Branch-and-Bound  
-     3. Genetic Algorithm  
-     4. Greedy DFS  
-     5. Greedy Random-Restart
-     6. Simulated Annealing 
-
-For each selected algorithm it prints:
-
-- Starting location  
-- Cycle length  
-- Path  
-- Execution time  
+* Tkinter is used for drawing; ensure your Python installation includes it (usually bundled).
 
 ---
 
-#### 2. Minimum 1-Dominating Set
+## Usage
 
-```bash
-python minOneDominatingSet.py <dataset_file>
-```
+1. Prepare your data:
 
-- **`<dataset_file>`**: Same format as above.
-- The script will prompt for:
-  1. **Algorithm selection**:
-     1. Brute Force  
-     2. Branch-and-Bound  
-     3. Greedy Heuristic  
+   * **stations.txt**: each line in the format:
 
-For each selected algorithm it prints:
+     ```plaintext
+     StationName  X  Y
+     ```
 
-- Dominating set size  
-- Station set  
-- Execution time  
+     where `X` and `Y` are integer coordinates.
+   * **lines.txt**: blocks separated by blank lines. Each block starts with:
 
----
+     ```plaintext
+     <LineID>  <Color>  <Count>
+     ```
 
-### Input Format
+     followed by `Count` lines of `StationA  StationB` pairs.
 
-- Stations are unique strings without spaces.  
-- The dataset must list one edge per line:
-  ```
-  A B
-  ```
+2. Run the script:
 
----
+   ```bash
+   python main.py stations.txt lines.txt
+   ```
 
-### Algorithms Implemented
+3. Follow the on‑screen menu prompts to:
 
-#### 1. Longest Simple Cycle
-- **Brute Force**: DFS explores all simple paths, checks for cycle closure.  
-- **Branch-and-Bound**: DFS with pruning via reachable‐node counts.  
-- **Genetic Algorithm**: Random population, tournament selection, crossover, mutation.  
-- **Greedy DFS**: At each step pick neighbor of highest degree.  
-- **Greedy Random-Restart**: Repeat greedy with random restarts.  
-- **Simulated Annealing**: Perturb paths, accept moves by Metropolis criterion.  
-
-#### 2. Minimum 1-Dominating Set
-- **Brute Force**: Try all combinations in increasing size until full coverage.  
-- **Branch-and-Bound**: DFS with a lower bound based on maximum degree.  
-- **Greedy Heuristic**: Iteratively pick the node covering the most uncovered neighbors.  
+   * Draw the graph window
+   * Select algorithms for dominating sets or longest cycle searches
+   * View results and timings in the console
 
 ---
 
-## Português
+## Code Structure
 
-### Visão Geral
-Este repositório contém implementações em Python para dois problemas de grafo na rede de metrô:
+* **Graph I/O**
 
-1. **Maior Ciclo Simples**  
-   Dada uma estação inicial, encontra o ciclo simples de maior comprimento que inicia e termina na mesma estação sem revisitar estações intermediárias.
+  * `load_stations(path)`
+  * `load_lines(path)`
+  * `load_graph(stations_path, lines_path)`
+  * `build_visual_graph(stations, lines)`
 
-2. **Conjunto Dominante Mínimo 1**  
-   Encontra o menor conjunto de estações (guichês) de modo que toda estação fique a no máximo uma aresta de distância de um guichê.
+* **Visualization**
 
-Desenvolvido para a disciplina “Projeto e Análise de Algoritmos” da PUC Minas.
+  * `draw_on_canvas(G, stations, size=(920,920), node_r=8)`
 
----
+* **Dominating Set Algorithms**
 
-### Requisitos
+  * `brute_force_min_dominating_set(G)`
+  * `branch_and_bound_min_dominating_set(G)`
+  * `greedy_dominating_set(G)`
 
-- Python 3.7 ou superior  
-- Biblioteca `networkx`  
+* **Longest Cycle Algorithms**
 
-Instalação:
+  * `brute_force_longest_cycle(G, start)`
+  * `branch_and_bound_longest_cycle(G, start)`
+  * `genetic_longest_cycle(G, start, pop_size=20, generations=200, mutation_rate=0.2)`
+  * `greedy_dfs_cycle(G, start)`
+  * `grasp(G, start, k=3, iterations=10000)`
+  * `simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.9, max_iters=1000)`
+  * `tabu_search_longest_cycle(G, start, tabu_tenure=10, max_iters=100, neigh_sample=50)`
+  * `aco_longest_cycle(G, start, num_ants=20, num_iters=100, alpha=1.0, beta=2.0, rho=0.1, Q=1.0)`
 
-```bash
-pip install networkx
-```
+* **Main Menu**
 
----
-
-### Uso
-
-#### 1. Maior Ciclo Simples
-
-```bash
-python longestSimplePath.py <arquivo_de_dados>
-```
-
-- **`<arquivo_de_dados>`**: arquivo de texto com arestas no formato:
-  ```
-  EstacaoA EstacaoB
-  ```
-- O script solicitará:
-  1. **Estação inicial** (deixe em branco para testar todas).  
-  2. **Seleção de algoritmos** (lista separada por vírgulas):
-     1. Força Bruta  
-     2. Branch-and-Bound  
-     3. Algoritmo Genético  
-     4. Greedy DFS (em desenvolvimento – desaconselhado)  
-     5. Greedy Random-Restart (em desenvolvimento – desaconselhado)  
-     6. Simulated Annealing (em desenvolvimento – desaconselhado)  
-
-Para cada algoritmo escolhido, exibe:
-
-- Estação inicial  
-- Comprimento do ciclo  
-- Caminho  
-- Tempo de execução  
+  * `main()` handles argument parsing and CLI interaction.
 
 ---
 
-#### 2. Conjunto Dominante Mínimo 1
+## Notes
 
-```bash
-python minOneDominatingSet.py <arquivo_de_dados>
-```
-
-- **`<arquivo_de_dados>`**: mesmo formato acima.  
-- O script solicitará:
-  1. **Seleção de algoritmos**:
-     1. Força Bruta  
-     2. Branch-and-Bound  
-     3. Heurística Gulosa  
-
-Para cada algoritmo escolhido, exibe:
-
-- Tamanho do conjunto dominante  
-- Conjunto de estações  
-- Tempo de execução  
-
----
-
-### Formato de Entrada
-
-- Estaçõe são identificadas por strings únicas sem espaços.  
-- Cada linha do arquivo deve conter uma aresta:
-  ```
-  A B
-  ```
-
----
-
-### Algoritmos Implementados
-
-#### 1. Maior Ciclo Simples
-- **Força Bruta**: DFS que explora todos os caminhos simples e verifica fechamento.  
-- **Branch-and-Bound**: DFS com poda baseada em contagem de nós alcançáveis.  
-- **Algoritmo Genético**: População inicial, torneio, crossover e mutação.  
-- **Greedy DFS**: Escolhe vizinho de maior grau.  
-- **Greedy Random-Restart**: Múltiplas reinicializações aleatórias.  
-- **Simulated Annealing**: Perturba caminhos e usa critério de Metropolis.  
-
-#### 2. Conjunto Dominante Mínimo 1
-- **Força Bruta**: Testa todas as combinações até cobrir todo o grafo.  
-- **Branch-and-Bound**: DFS com limite inferior baseado no grau máximo.  
-- **Heurística Gulosa**: Escolhe iterativamente o nó que cobre mais vizinhos descobertos.  
+* Some algorithms (brute‑force, branch‑and‑bound) can be very slow on large networks.
+* The simulated annealing implementation assumes a complete graph; use with caution on sparse networks.
+* Simulated Annealing, Tabu Search and Ant Colony are poorly commented and implemented, I really don't know if they actually work.
