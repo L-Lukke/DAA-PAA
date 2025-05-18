@@ -6,7 +6,6 @@ import random
 from collections import deque
 import networkx as nx
 import tkinter as tk
-import networkx as nx
 
 def load_graph(stations_path, lines_path):
     G = nx.Graph()
@@ -54,7 +53,10 @@ def load_graph(stations_path, lines_path):
     
     return G
 
-# ----------- Map Drawing  -----------
+# ======================================================
+# ==================== G. Interface ====================
+# ======================================================
+
 def load_stations(path):
     stations = {}
     with open(path, 'r', encoding='utf-8') as f:
@@ -124,54 +126,103 @@ def draw_on_canvas(G, stations, size=(920,920), node_r=8):
         canvas.create_text(cx, cy-node_r-2, text=name, anchor=tk.S, font=('TkDefaultFont',8))
     root.mainloop()
 
-# ----------- Minimum 1‐Dominating Set -----------
+# ======================================================
+# ============== Minimum 1‐Dominating Set ==============
+# ======================================================
+
 def brute_force_min_dominating_set(G): # note! this only returns the first minimum dominating set it finds, not all of them (if there are more than one)
-    for r in range(1, len(G)+1): # r is the size of the node groups that possibly dominate G (worst case edgeless graph this is n nodes)
-        for combo in itertools.combinations(G.nodes(), r): # this is the part where it explodes, as it iterate through every different combination of n packaged in size r groups
+    """
+    - dom: current partial dominating set
+    - domd: set of nodes already dominated
+    search subsets of nodes in increasing size r (from 1 up to |G|)
+    for each combination of r nodes:
+        - build its domd (dominated set) by taking each node u in the dom, adding u and all of u's neighbors into it
+        - if domd covers every node in G, we found a dominating set of size r
+    since we try sizes in ascending order, the first hit is guaranteed minimum
+    """
+
+    for r in range(1, len(G)+1): # r is the size of the node groups that possibly dominate G (worst case edgeless graph this is |G| nodes)
+        for dom in itertools.combinations(G.nodes(), r): # this is the part where it explodes, as it iterate through every combination of size r groups of nodes
             domd = set()
-            for u in combo:
-                domd |= {u} | set(G.neighbors(u)) # take every neighbour of every node in 'combo' (including themselves) and shove them into a set
-            if len(domd) == len(G): # if the lengyh of all nodes in 'combo' summed with all of its neighbours is equal to the size of the graph, it is a min. dom. set
-                return set(combo) # this actually works because sets can't have duplicates
+            for u in dom:
+                domd |= {u} | set(G.neighbors(u)) # take every neighbour of every node in dom (including themselves) and shove them into a set
+            if len(domd) == len(G): # if the lengyh of all nodes in dom summed with all of its neighbours is equal to the size of the graph, it is a min. dom. set
+                return set(dom) # this actually works because sets can't have duplicates
 
 def branch_and_bound_min_dominating_set(G):
-    nodes = list(G.nodes()); n = len(nodes)
+    """
+    - dom: current partial dominating set
+    - domd: set of nodes already dominated by dom
+    1. If |dom| ≥ best['size'], prune (we already have a better solution).
+    2. If |domd| == n, all nodes are dominated, we update best with current dom.
+    3. If |dom| + lb ≥ best['size'], prune (even super optimistically we can't beat best).
+    4. Choose an undominated node u (first in nodes not in domd).
+    5. Branch on two possibilities:
+       a) Include u in dom
+       b) Include u's neighbours in dom
+    """
+
+    nodes = list(G.nodes())
+    n = len(nodes)
     neighs = {u:{u}|set(G.neighbors(u)) for u in nodes}
-    delta = max(len(neighs[u]) for u in nodes)
+    delta = max(len(neighs[u]) for u in nodes) # maximum number of dominated nodes by a single dominator node
     best = {'size':n+1, 'set':set()}
+
     def dfs(dom, domd):
-        if len(dom) >= best['size']:
+        if len(dom) >= best['size']: # current dominating set is already too big
             return
-        if len(domd) == n:
+
+        if len(domd) == n: # all nodes are dominated
             best['size'], best['set'] = len(dom), dom.copy()
             return
-        lb = math.ceil((n - len(domd)) / delta)
+
+        # lower‐bound pruning
+        lb = math.ceil((n - len(domd)) / delta) # in other words, lb is the fewest possible dominators needed to dominate the whole stuff
         if len(dom) + lb >= best['size']:
             return
-        u = next(x for x in nodes if x not in domd)
-        dfs(dom|{u}, domd|neighs[u])
-        for v in G.neighbors(u):
+
+        u = next(x for x in nodes if x not in domd) # branching: pick one undominated node u
+
+        dfs(dom | {u}, domd | neighs[u]) #  try adding u to dominator set
+
+        for v in G.neighbors(u): # try adding one of u's neighbors instead
             if v not in dom:
-                dfs(dom|{v}, domd|neighs[v])
+                dfs(dom | {v}, domd | neighs[v])
+
     dfs(set(), set())
     return best['set']
 
 def greedy_dominating_set(G):
+    """
+    - dom : current dominating set (initially empty)
+    - domd : set of nodes already dominated (initially empty)
+    Repeat until all nodes are dominated:
+        1. Select u = the node covering the most undominated nodes.
+        2. Add u to dom.
+        3. Add u and u's neighbourhood to domd.
+    Return dom when domd covers all vertices.
+    """
+
     dom, domd = set(), set()
     while len(domd) < len(G):
-        u = max(G.nodes(), key=lambda x: len(({x}|set(G.neighbors(x))) - domd))
+        u = max(G.nodes(), key=lambda x: len(({x}|set(G.neighbors(x))) - domd)) # (fancy stuff!) selects the node u who dominates the largest number of undominated nodes
         dom.add(u)
         domd |= {u} | set(G.neighbors(u))
     return dom
 
-# ----------- Longest Simple Cycle -----------
+# ======================================================
+# ================ Longest Simple Cycle ================
+# ======================================================
 
 def brute_force_longest_cycle(G, start):
     """
-    find the longest simple cycle starting and ending at any given node by exhaustive DFS:
-    - maintains a global best_path list (constantly re-evaluated)
-    - explores every possible path without revisiting nodes
-    - checks for a return edge at each extension
+    1. For each neighbour of node:
+        a) If node == start and len(path) > 2:
+            - A cycle is found; if len(path) > len(best_path), update best_path = path.copy().
+        b) Else if neighbour was not visited:
+            - Extend path
+            - Recurse with extended path
+            - Backtrack to try with other paths
     """
 
     best_path = []
@@ -179,35 +230,44 @@ def brute_force_longest_cycle(G, start):
     def dfs(path, visited):
         curr = path[-1]
         for w in G.neighbors(curr):
-            if w == start and len(path) > 1: # found a cycle
+            if w == start and len(path) > 2: # found a cycle
                 if len(path) > len(best_path): # its greater than the current best
                     best_path[:] = path[:]  # current path becomes best path
             elif w not in visited: # there is still a neighbour that wasn't visited - recurse: extend path to neighbour w
                 visited.add(w)
                 path.append(w)
 
-                dfs(path, visited) # backtrack - removing the last step from the recursion (last node added to path and trying again with new neighbours (if available))
+                dfs(path, visited)
 
-                path.pop()
+                path.pop() # backtrack - removing the last step from the recursion
                 visited.remove(w)
 
-    dfs([start], {start}) # initalization of dfs with given node
+    dfs([start], {start})
 
-    if best_path and start in G.neighbors(best_path[-1]):
+    if best_path and (start in G.neighbors(best_path[-1])):
         best_path.append(start)
     
     return best_path
 
 def branch_and_bound_longest_cycle(G, start):
     """
-    find the longest simple cycle using branch-and-bound pruning:
-    - precompute adjacency lists for speed (no need to G.neighbors(x) every recursion/loop)
-    - reachable_count(u, vis) estimates how many additional nodes are reachable from u without revisiting those already in the current path
-    - prune recursion when current_length + reachable_count <= best_length (in other words, when the current path will not result in beating the current best in its best case)
+    reachable_count(u, visited):
+        Upper-bound: run a BFS from node u (excluding nodes in visited) to count how many additional distinct nodes could still be added to the path at most
+
+    dfs(path):
+        1. If len(path) + reachable_count(node, path) <= best['length'], prune (no better cycle possible). <- this is the only practical difference to brute forcing
+
+        2. For each neighbour of node:
+            a) If node == start and len(path) > 2:
+                - A cycle is found; if len(path) > best['length'], update best
+            b) Else if neighbour was not visited:
+                - Extend path
+                - Recurse with extended path
+                - Backtrack to try with other paths
     """
 
     best = {'length': 0, 'path': []}
-    adj = {u: list(G.neighbors(u)) for u in G.nodes()} # convert the relation node-neighbour to lists for every node
+    adj = {u: list(G.neighbors(u)) for u in G.nodes()} # creates an adjacency list for each node (adj[u] = [G.neighbors(u)])
 
     def dfs(path):
         curr = path[-1]
@@ -216,19 +276,18 @@ def branch_and_bound_longest_cycle(G, start):
             return # if even the optimistic reachable count can't beat current best, stop recursion
 
         for w in adj[curr]:
-            if w == start and len(path) > 1: # found a cycle
+            if w == start and len(path) > 2: # found a cycle
                 if len(path) > best['length']: # its greater than the current best
                     best['length'] = len(path) # current length becomes best lenght
                     best['path'] = path.copy() # current path becomes best path
             elif w not in path:
                 path.append(w)
-                dfs(path) # backtrack - removing the last step from the recursion (last node added to path and trying again with new neighbours (if available))
-                path.pop()
+                dfs(path) 
+                path.pop() # backtrack - removing the last step from the recursion
 
-    def reachable_count(u, vis): # upper bound function: a simple BFS that counts all reachable nodes.
-
-            seen = set(vis) # copy in all the nodes already on your current path, so you never count them again.
-            q = deque([u]) # start a BFS (in the form of a double-ended queue, to pop the already explored nodes - in the left - and add its neighbours - in the right) from current node.
+    def reachable_count(u, vis): # upper bound function: a simple BFS that counts all reachable nodes
+            seen = set(vis) # copy in all the nodes already on your current path, so you never count them again
+            q = deque([u]) # start a BFS (in the form of a double-ended queue, to pop the already explored nodes - in the left - and add its neighbours - in the right) from current node
             seen.add(u)
             cnt = 0
             
@@ -236,27 +295,43 @@ def branch_and_bound_longest_cycle(G, start):
                 x = q.popleft() # take the oldest node
                 for y in adj[x]: # iterate through its neighbours
                     if y not in seen:
-                        seen.add(y)  # mark it so we don’t revisit it,
-                        q.append(y)  # enqueue it for further exploration
+                        seen.add(y)  # mark it so we don’t revisit it
+                        q.append(y)  # enqueue it
                         cnt += 1 
+
             return cnt
     
     dfs([start])    
-     
-    return best['path']
+    return best['path'] + [start] if best['path'] and start in adj[best['path'][-1]] else None
 
-def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=0):
-    """
-    heuristic search using a genetic algorithm:
-    - randomly initialize a population of simple paths starting at a given `start` node.
-    - fitness = path_length it can close to a cycle, else 0.
-    - tournament selection of size 2.
-    - single-point crossover at a common node.
-    - mutation: truncate and randomly extend the path.
-    - keep track of best solution over generations.
+def genetic_longest_cycle(G, start, pop_size=20, generations=200, mutation_rate=0.2):
+    """    
+    - Each initial individual is a random simple path that begins at `start`.
+
+    Fitness function: (that is bad - kills diversity)
+    - If the path is a closeable cycle, fitness = length of path.
+
+    Evolutionary loop:
+    1. Selection: pick two random individuals and keep the one with higher fitness.
+    2. Crossover: pair up the selected individuals. For each pair:
+       - Find common intermediate nodes (excluding start), pick one at random.
+       - Create a children that inherits p1 up to that selected random node and p2 from that node onward.
+       - Remove any duplicate vertices while preserving order. (oops?)
+       - If no common node, inherit the fitter parent unchanged.
+    3. Mutation: each child has a 20% chance of mutation:
+       - Choose a random cut point in the path (not the start).
+       - Truncate there, then perform a fresh random walk from that point to extend the path without revisiting vertices.
+    4. Replacement: the new population becomes the set of mutated/unedited children.
+    5. Track the best-ever individual across all generations.
+
+    Special note from author: this kinda sucks bad for a single reason: mutation breaks established cycles, as it will destroy the last part of the path. 
+    The fix would be to force mutation to complete the path, but this would suck even worse because it will cease to be a random walk and will now be a ton of
+    "randm" walks until one of them closes the cycle, increasing the cost by a factor of mutation_rate*n² = O(n²) (i think). Idk how to fix it.
+    
+    Special note from author 2: this code permits inner cycles in the big cycle. Based on given instructions i really don't know if it should, but i dont think so.
     """
 
-    def random_path(): # generate a random simple path starting at `start` node by random walks.
+    def random_path(): # generate a random simple path starting at `start` node by random walks
         visited = {start}
         path = [start]
         curr = start
@@ -264,33 +339,33 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
             cands = [w for w in G.neighbors(curr) if w not in visited]
             if not cands:
                 break
-            nxt = random.choice(cands)  # choose next node of walk randomly among unvisited neighbour candidates
+            nxt = random.choice(cands)  # choose next node of walk randomly aong unvisited neighbour candidates
             visited.add(nxt)
             path.append(nxt)
             curr = nxt
         return path
 
-    def fitness(path): # fitness equals path size for closable cycles.
+    def fitness(path): # fitness equals path size for closable cycles (this kinda sucks)
         if start in G.neighbors(path[-1]):
             return len(path)
         else:
             return 0
 
     pop = [random_path() for _ in range(pop_size)] # initialize population of random walks of size `pop_size` (adjustable parameter)
-    best = max(pop, key=fitness) # take best path (longest and/or closable)
+    best = max(pop, key=fitness) # take best path (longest closable)
 
-    for _ in range(generations): # each iteration is a generation
+    for _ in range(generations): # each iteration is a generation (funny)
         new_pop = []
-        # new_pop array population will be done through size 2 tourament
+        # new_pop array will be populated through size 2 tourament
         for _ in range(pop_size):
-            a, b = random.sample(pop, 2) # takes 2 individuals a and b from current population
-            new_pop.append(a if fitness(a) > fitness(b) else b) # compare them and select the better fit to append to new population
+            a, b = random.sample(pop, 2) # takes 2 random individuals a and b from current population
+            new_pop.append(a if fitness(a) > fitness(b) else b) # FIGHT TO THE DEATH!
 
         children = []
-        # creates children through crossover of 2 parents
-        for i in range(0, pop_size, 2): # kind of assumes even array size? idk
+        # creates children through crossover of 2 parents (maybe later add crossover rate?)
+        for i in range(0, pop_size, 2): # kind of assumes even population size? (fix later)
             p1, p2 = new_pop[i], new_pop[i+1] # takes two parents, two consecutive elements in new_pop array
-            common = list(set(p1[1:]) & set(p2[1:])) # find common intermediate nodes ((note that the starting point can not be included as it should be always equal)
+            common = list(set(p1[1:]) & set(p2[1:])) # find common intermediate nodes (note that the starting point can not be included as it will be always equal)
             if common:
                 c = random.choice(common) # take a random common corssover point
                 i1, i2 = p1.index(c), p2.index(c)
@@ -299,10 +374,10 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
                 child = [x for x in child if not (x in seen or seen.add(x))] # use `seen` set to remove duplicates, each child node is only added if it is not in set 
                 children.append(child)
             else:
-                children.extend([p1, p2]) # this is the bad case, where there`s no crossover between parents, and so they are copied
+                children.append(p1 if fitness(p1) > fitness(p2) else p2)  # this is the bad case, where there`s no crossover between parents, so the most fit parent is copied
 
-        pop = [] # zeroes population array, as children is doing its job now (funny)
-        # mutation and formation of new population (funny again)
+        pop = [] # zeroes population array, as children is doing its job now (funny again)
+        # mutation and formation of new population (funny again again)
         for path in children:
             if random.random() < mutation_rate: # 20% chance of mutation (parametrized, i just tried it a bunch of times and 20% was the sweetspot)
                 idx = random.randrange(1, len(path)) # choose random cut point in the path
@@ -319,7 +394,9 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
                     new_path.append(nxt)
                     curr = nxt
                 path = new_path
-            pop.append(path) # fills the population array with children (about 20% of them are mutated now)
+            pop.append(path) # fills the population array with (about 20% mutated) individuals (they grow up so fast!)
+
+        # note! mutation possiby destroys the cycle :( not much to do about it i think
 
         cand = max(pop, key=fitness) # update best individual
         if fitness(cand) > fitness(best):
@@ -332,6 +409,21 @@ def genetic_longest_cycle(G, start, pop_size=30, generations=100, mutation_rate=
     return None
 
 def grasp(G, start, k=3, iterations=10000):
+    """
+    1. Repeat for `iterations`:
+        a. While True:
+            - Create list of unvisited neighbours of current node
+            - If list is empty:
+                + If current node can close the cycle, close it
+                + Break loop
+            - Else:
+                + Sort list by descending degree
+                + Restricted candidate list picks the top-k nodes
+                + Pick from RCL at random, visit it and append it to the path
+        b. If a valid cycle was found and is longer than the current longest, update it
+    2. Return the longest cycle found (or None if no cycle of length ≥ 3 was ever found)
+    """
+
     best_cycle = []
     
     for _ in range(iterations):
@@ -341,31 +433,38 @@ def grasp(G, start, k=3, iterations=10000):
         
         while True:
             curr = path[-1]
-            # Unvisited neighbors
             cands = [w for w in G.neighbors(curr) if w not in visited]
             
-            # If no forward move, attempt to close cycle back to start
             if not cands:
                 if start in G.neighbors(curr) and len(path) >= 3:
                     cycle = path + [start]
                 break
             
-            # Build RCL of top-k neighbors by degree
             cands.sort(key=lambda x: G.degree(x), reverse=True)
-            rcl = cands[:k]
-            
-            # Randomly pick next node from RCL
+            rcl = cands[:k] 
             nxt = random.choice(rcl)
             visited.add(nxt)
             path.append(nxt)
-        
-        # Update best cycle if this iteration found a longer one
+
         if cycle and len(cycle) > len(best_cycle):
             best_cycle = cycle
     
     return best_cycle if best_cycle else None
 
 def greedy_dfs_cycle(G, start):
+    """
+    1. While True:
+       a Create list of unvisited neighbours of current node
+       b. If the list is not empty
+            - Choose the node of highest degree
+            - Append it to path and mark it as visited
+          Else:
+            - Try to return a closeable cycle
+            - If none close a cycle, return None.
+
+    Special note from author: worst than all of them, this monstrosity takes the crown. This is abhorent!
+    """
+
     visited = {start}
     path = [start]
 
@@ -373,22 +472,67 @@ def greedy_dfs_cycle(G, start):
         curr = path[-1]
 
         cands = [w for w in G.neighbors(curr) if w not in visited]
+
         if cands:
             nxt = max(cands, key=lambda w: G.degree(w))
             visited.add(nxt)
             path.append(nxt)
             continue
 
-        for w in G.neighbors(curr):
-            if w in visited:
-                idx = path.index(w)
-                if len(path) - idx + 1 >= 3:
-                    return path[idx:] + [w]
+        if start in G.neighbors(curr) and len(path) >= 3:
+            return path + [start]
 
-        raise ValueError(f"No cycle found from start={start} via greedy walk")
+        return None
+    
+# kinda cursed kinda bad, maybe one day i fix these
 
+def simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.9, max_iters=1000):
+    """
+    AS WRITTEN, THIS WILL ONLY WORK FOR COMPLETE GRAPHS (TO.DO: TEST a- reject any neighbor that isnt a real cycle in G, or b- only perform k-opt / insert / swap operations that preserve adjacency)
 
-def simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.995, max_iters=10000):
+    Approximate the longest simple cycle in G starting and ending at `start` using simulated annealing.
+
+    Parameters:
+    - G: an undirected graph
+    - start: the node at which the cycle must begin and end
+    - T0: initial temperature
+    - Tmin: minimum temperature threshold to halt the annealing
+    - alpha: cooling rate
+    - max_iters: number of annealing iterations
+
+    Constraints:
+    - T0 must be greater than 0. The higher the more accurate and slower
+    - Tmin must be greater than 0 - unless you like dividing by 0. The lower the more accurate and slower
+    - alpha must be greater than 0 and lower than 1. The higher the more accurate and slower. (realistically, never drop below 0.75)
+
+    Helpers:
+    - random_closable_cycle(): this is actually a GARGANTUAN bottleneck, but idk how to fix it so it is what it is tho
+        + Builds a random simple path from 'start' by random walks until no unvisited neighbors remain
+        + Returns only if the end is adjacent to 'start', then closes it by appending `start`
+    - cycle_length(cycle):
+        + Returns the number of edges in the cycle
+    - two_opt(cycle):
+        + Selects i < k and reverses the segment cycle[i:k+1], preserving start/end
+    - node_insert(cycle):
+        + Removes one intermediate node and reinserts it at a different position (keeping start/end fixed)
+    - node_swap(cycle):
+        + Swaps two intermediate nodes in place
+    - random_neighbor(cycle):
+        + Picks one of the above three moves at random, applies it, and checks validity (simple, start==end)
+
+    Outline:
+    1. Initialize current and best with randomly generated closable cycle
+    2. For up to max_iters iterations:
+        a. If T < Tmin, break early
+        b. Generate candidate to best using a move at random
+        c. Compute delta = cycle_length(candidate) - cycle_length(current)
+        d. If (improvement (delta ≥ 0) is always accepted. When Δ < 0, you still accept the worse candidate with a probability which is between 0 and 1.
+        At high temperature T, its more likely to accept downhill moves (helps escape local maxima); as T cools, that probability drops) current becomes candidate
+        e. If cycle_length(current) > cycle_length(best), update best
+        f. Cool: T = alpha*T
+    3. Return best cycle (list of nodes, with start repeated at end).
+    """
+
     def random_closable_cycle():
         while True:
             path = [start]
@@ -396,9 +540,12 @@ def simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.995, 
             u = start
             while True:
                 nbrs = [v for v in G.neighbors(u) if v not in visited]
-                if not nbrs: break
+                if not nbrs:
+                    break
                 v = random.choice(nbrs)
-                path.append(v); visited.add(v); u = v
+                path.append(v)
+                visited.add(v)
+                u = v
             if start in G.neighbors(u) and len(path) > 2:
                 return path + [start]
 
@@ -431,7 +578,7 @@ def simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.995, 
     def random_neighbor(cycle):
         move = random.choice([two_opt, node_insert, node_swap])
         nbr = move(cycle)
-        if len(set(nbr[:-1])) == len(nbr)-1 and nbr[0] == nbr[-1]:
+        if len(set(nbr[:-1])) == len(nbr)-1 and nbr[0] == nbr[-1]: # no duplicates cycle
             return nbr
         return cycle
 
@@ -439,7 +586,7 @@ def simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.995, 
     best = current[:]
     T = T0
 
-    for it in range(max_iters):
+    for _ in range(max_iters):
         if T < Tmin:
             break
         candidate = random_neighbor(current)
@@ -452,17 +599,54 @@ def simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.995, 
 
     return best
 
+def tabu_search_longest_cycle(G, start, tabu_tenure=10, max_iters=100, neigh_sample=50):
+    """
+    Parameters:
+    - G: undirected graph
+    - start: the node at which every cycle must begin and end
+    - tabu_tenure: maximum size of the tabu list (number of forbidden moves)
+    - max_iters: maximum number of iterations to perform
+    - neigh_sample: number of neighbor moves to sample for 2-opt and swap
 
-def tabu_search_longest_cycle(G, start, tabu_tenure=10, max_iters=1000, neigh_sample=50):
+    Helpers:
+    - random_closable_cycle(): this is actually a GARGANTUAN bottleneck, but idk how to fix it so it is what it is tho
+        + Builds a random simple path from 'start' by random walks until no unvisited neighbors remain
+        + Returns only if the end is adjacent to 'start', then closes it by appending `start`
+    - cycle_length(cycle):
+        + Returns the number of edges in the cycle
+    - neighbors(cycle):
+        • Generates up to `neigh_sample` 2-opt reversals and `neigh_sample//2` node swaps.
+        • Only returns valid simple cycles (start==end, no repeated intermediate nodes).
+
+
+    Outline:
+    1. Initialize current = random_closable_cycle(), best_global = current.
+    2. Initialize empty tabu list of maxlen = tabu_tenure.
+    3. For up to max_iters:
+        a. Generate a list of candidate moves with neighbors(current).
+        b. Filter out moves whose move_id is in tabu, unless they improve best_global.
+        c. If no candidates remain, terminate early.
+        d. Select the neighbor with maximum cycle_length as the new current.
+        e. Append its move_id to tabu.
+        f. If current is better than best_global, update best_global.
+    4. Return best_global (list of nodes, with start at both ends).
+    """
+
     def random_closable_cycle():
         while True:
-            path = [start]; vis={start}; u=start
+            path = [start]
+            visited = {start}
+            u = start
             while True:
-                nbrs=[v for v in G.neighbors(u) if v not in vis]
-                if not nbrs: break
-                v=random.choice(nbrs); path.append(v); vis.add(v); u=v
-            if start in G.neighbors(u) and len(path)>2:
-                return path+[start]
+                nbrs = [v for v in G.neighbors(u) if v not in visited]
+                if not nbrs:
+                    break
+                v = random.choice(nbrs)
+                path.append(v)
+                visited.add(v)
+                u = v
+            if start in G.neighbors(u) and len(path) > 2:
+                return path + [start]
 
     def cycle_length(cycle):
         return len(cycle)-1
@@ -504,6 +688,42 @@ def tabu_search_longest_cycle(G, start, tabu_tenure=10, max_iters=1000, neigh_sa
     return best_global
 
 def aco_longest_cycle(G, start, num_ants=20, num_iters=100, alpha=1.0, beta=2.0, rho=0.1, Q=1.0):
+    """
+    Parameters:
+    - G         : undirected graph (e.g., networkx.Graph)
+    - start     : node at which every cycle must begin and end
+    - num_ants  : number of ants (candidate solutions) per iteration
+    - num_iters : number of ACO iterations
+    - alpha     : pheromone importance exponent
+    - beta      : heuristic importance exponent
+    - rho       : pheromone evaporation rate (0 < rho < 1)
+    - Q         : total pheromone deposited per iteration
+
+    Data structures:
+    - tau       : nested dict of pheromone levels, tau[u][v] initialized to 1.0 for each edge
+    - heuristic : function returning 1/deg(v) (or 1 if deg(v)=0) as desirability of choosing v
+
+    Helpers:
+    - construct_cycle():
+        • Starts at `start`, builds a simple path by repeatedly choosing the next node
+          from unvisited neighbors or closing back to `start` if possible.
+        • Selection probability ∝ (tau[u][v]^alpha)·(heuristic(u, v)^beta).
+        • Returns a closable cycle [start, …, start] or None if no closure.
+
+    Main ACO loop:
+    1. For each iteration:
+       a. Each of num_ants ants runs construct_cycle(); collect all successful cycles.
+       b. Let best_it be the longest cycle found this iteration.
+       c. Update global best_cycle if best_it is longer.
+       d. Evaporate pheromone: tau[u][v] ← (1 - rho)·tau[u][v] for all edges.
+       e. Deposit pheromone along edges of best_cycle: τ[u][v] += Q / L, where L = cycle length.
+
+    Return:
+    - best_cycle: list of nodes closing at `start` (e.g. [start, …, start]) if found
+    - Fallback: if no cycle ever found, returns a trivial 2-cycle [start, v, start] for any neighbor v,
+      or empty list if `start` is isolated.
+    """
+        
     tau = {u: {v: 1.0 for v in G[u]} for u in G}
 
     def heuristic(u, v):
@@ -563,7 +783,9 @@ def aco_longest_cycle(G, start, num_ants=20, num_iters=100, alpha=1.0, beta=2.0,
 
     return best_cycle
 
-# ----------- Menu -----------
+# ======================================================
+# ===================== Main/Menu ======================
+# ======================================================
 
 def main():
     if len(sys.argv) != 3:
@@ -644,7 +866,7 @@ def main():
             print("  3- Genetic Algorithm")
             print("  4- Greedy DFS")
             print("  5- Greedy Random-Restart")
-            print("  6- Simulated Annealing (WIP)")
+            print("  6- Simulated Annealing (use only in complete graphs) (WIP)")
             print("  7- Tabu Search (WIP)")
             print("  8- Ant Colony (WIP)")
             algs = input(" > ").strip().lower()

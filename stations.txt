@@ -13,7 +13,7 @@ creteil--prefecture 10 50
 daumesnil 10 50
 denfert-rochereau 10 50
 duroc 10 50
-gabriel-peri-asnieres---gennevilliers 10 50
+gabriel-peri-asnieres---gennevilliers 10 500
 gallieni 10 50
 gare-dausterlitz 10 50
 gare-de-lest 10 50
