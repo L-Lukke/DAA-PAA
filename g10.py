@@ -705,10 +705,9 @@ def aco_longest_cycle(G, start, num_ants=20, num_iters=100, alpha=1.0, beta=2.0,
 
     Helpers:
     - construct_cycle():
-        • Starts at `start`, builds a simple path by repeatedly choosing the next node
-          from unvisited neighbors or closing back to `start` if possible.
-        • Selection probability ∝ (tau[u][v]^alpha)·(heuristic(u, v)^beta).
-        • Returns a closable cycle [start, …, start] or None if no closure.
+        - Starts at `start`, builds a simple path by repeatedly choosing the next node from unvisited neighbors or closing back to `start` if possible.
+        - Selection probability ∝ (tau[u][v]^alpha)·(heuristic(u, v)^beta).
+    - Returns a closable cycle [start, …, start] or None if no closure.
 
     Main ACO loop:
     1. For each iteration:
@@ -847,7 +846,7 @@ def main():
                 start = time.perf_counter()
                 greedy_dom = greedy_dominating_set(G)
                 dur = time.perf_counter() - start
-                print(f"Greedt:")
+                print(f"Greedy:")
                 print(f"  Size = {len(greedy_dom)}")
                 print(f"  Set  = {greedy_dom}")
                 print(f"  Time = {dur:.3f} s\n")
