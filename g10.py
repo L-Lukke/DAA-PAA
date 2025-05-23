@@ -304,34 +304,29 @@ def branch_and_bound_longest_cycle(G, start):
     dfs([start])    
     return best['path'] + [start] if best['path'] and start in adj[best['path'][-1]] else None
 
-def genetic_longest_cycle(G, start, pop_size=20, generations=200, mutation_rate=0.2):
-    """    
-    - Each initial individual is a random simple path that begins at `start`.
+def genetic_longest_cycle(G, start, pop_size=50, generations=300, crossover_rate=0.8, mutation_rate=0.2):
+    def repair_path(path, G, start):
+            # repair function: prune invalid steps (edges that do not exist in G)
+            repaired = [start] # always start from `start`
+            for node in path:
+                if G.has_edge(repaired[-1], node): # check if the edge is valid
+                    repaired.append(node)  # keep the node
+                else:
+                    break # stop at the first invalid step
+            return repaired # Return repaired path
 
-    Fitness function: (that is bad - kills diversity)
-    - If the path is a closeable cycle, fitness = length of path.
+    def make_cycle_from_path(path):
+        # repair function: try to append `start` to close the path into a valid cycle
+        if path and start in G.neighbors(path[-1]):
+            return path + [start]
+        while len(path) > 1 and start not in G.neighbors(path[-1]):
+            path.pop()
+        if path and start in G.neighbors(path[-1]):
+            return path + [start]
+        return None
 
-    Evolutionary loop:
-    1. Selection: pick two random individuals and keep the one with higher fitness.
-    2. Crossover: pair up the selected individuals. For each pair:
-       - Find common intermediate nodes (excluding start), pick one at random.
-       - Create a children that inherits p1 up to that selected random node and p2 from that node onward.
-       - Remove any duplicate vertices while preserving order. (oops?)
-       - If no common node, inherit the fitter parent unchanged.
-    3. Mutation: each child has a 20% chance of mutation:
-       - Choose a random cut point in the path (not the start).
-       - Truncate there, then perform a fresh random walk from that point to extend the path without revisiting vertices.
-    4. Replacement: the new population becomes the set of mutated/unedited children.
-    5. Track the best-ever individual across all generations.
-
-    Special note from author: this kinda sucks bad for a single reason: mutation breaks established cycles, as it will destroy the last part of the path. 
-    The fix would be to force mutation to complete the path, but this would suck even worse because it will cease to be a random walk and will now be a ton of
-    "randm" walks until one of them closes the cycle, increasing the cost by a factor of mutation_rate*n² = O(n²) (i think). Idk how to fix it.
-    
-    Special note from author 2: this code permits inner cycles in the big cycle. Based on given instructions i really don't know if it should, but i dont think so.
-    """
-
-    def random_path(): # generate a random simple path starting at `start` node by random walks
+    def random_cycle():
+        # random walk until stuck, then try to close into a cycle
         visited = {start}
         path = [start]
         curr = start
@@ -339,130 +334,155 @@ def genetic_longest_cycle(G, start, pop_size=20, generations=200, mutation_rate=
             cands = [w for w in G.neighbors(curr) if w not in visited]
             if not cands:
                 break
-            nxt = random.choice(cands)  # choose next node of walk randomly aong unvisited neighbour candidates
+            nxt = random.choice(cands)
             visited.add(nxt)
             path.append(nxt)
             curr = nxt
-        return path
+        cyc = make_cycle_from_path(path.copy())
+        return cyc
 
-    def fitness(path): # fitness equals path size for closable cycles (this kinda sucks)
-        if start in G.neighbors(path[-1]):
-            return len(path)
-        else:
+    def fitness(cycle):
+        # length of cycle (excluding the return to start) or 0 if invalid
+        if not cycle:
             return 0
+        return len(cycle) - 1
 
-    pop = [random_path() for _ in range(pop_size)] # initialize population of random walks of size `pop_size` (adjustable parameter)
-    best = max(pop, key=fitness) # take best path (longest closable)
+    # Initialize population: valid random cycles (fallback to 2-node cycles if needed)
+    pop = [random_cycle() for _ in range(pop_size)]
+    neighs = list(G.neighbors(start))
 
-    for _ in range(generations): # each iteration is a generation (funny)
-        new_pop = []
-        # new_pop array will be populated through size 2 tourament
-        for _ in range(pop_size):
-            a, b = random.sample(pop, 2) # takes 2 random individuals a and b from current population
-            new_pop.append(a if fitness(a) > fitness(b) else b) # FIGHT TO THE DEATH!
-
-        children = []
-        # creates children through crossover of 2 parents (maybe later add crossover rate?)
-        for i in range(0, pop_size, 2): # kind of assumes even population size? (fix later)
-            p1, p2 = new_pop[i], new_pop[i+1] # takes two parents, two consecutive elements in new_pop array
-            common = list(set(p1[1:]) & set(p2[1:])) # find common intermediate nodes (note that the starting point can not be included as it will be always equal)
-            if common:
-                c = random.choice(common) # take a random common corssover point
-                i1, i2 = p1.index(c), p2.index(c)
-                child = p1[:i1] + p2[i2:] # splice parents at the crossover point c
-                seen = set() # create a set of seen nodes
-                child = [x for x in child if not (x in seen or seen.add(x))] # use `seen` set to remove duplicates, each child node is only added if it is not in set 
-                children.append(child)
+    for i in range(len(pop)):
+        if pop[i] is None:
+            if neighs:
+                v = random.choice(neighs)
+                pop[i] = [start, v, start]
             else:
-                children.append(p1 if fitness(p1) > fitness(p2) else p2)  # this is the bad case, where there`s no crossover between parents, so the most fit parent is copied
+                pop[i] = None  # start is isolated — no cycles possible
 
-        pop = [] # zeroes population array, as children is doing its job now (funny again)
-        # mutation and formation of new population (funny again again)
-        for path in children:
-            if random.random() < mutation_rate: # 20% chance of mutation (parametrized, i just tried it a bunch of times and 20% was the sweetspot)
-                idx = random.randrange(1, len(path)) # choose random cut point in the path
-                visited = set(path[:idx+1]) # maintain visided list to aviod visiting the same node twice
-                new_path = path[:idx+1] # create a new path that is equal to the previous one up until the cut point
-                # now we just complete the path with a random walk
-                curr = new_path[-1]
-                while True:
-                    cands = [w for w in G.neighbors(curr) if w not in visited]
-                    if not cands:
-                        break
-                    nxt = random.choice(cands)
-                    visited.add(nxt)
-                    new_path.append(nxt)
-                    curr = nxt
-                path = new_path
-            pop.append(path) # fills the population array with (about 20% mutated) individuals (they grow up so fast!)
+    best = max(pop, key=fitness) # track the best
+    best_fit = fitness(best)
 
-        # note! mutation possiby destroys the cycle :( not much to do about it i think
+    for gen in range(generations): # main evolutionary loop
 
-        cand = max(pop, key=fitness) # update best individual
-        if fitness(cand) > fitness(best):
-            best = cand
+        # Selection: tournament of size 2
+        selected = []  # store selected individuals for crossover
+        for _ in range(pop_size):
+            a, b = random.sample(pop, 2)  # randomly pick two individuals
+            selected.append(a if fitness(a) >= fitness(b) else b)  # FIGHT TO DEATH!
 
-    if start in G.neighbors(best[-1]): # close the cycle if possible
-        best.append(start)
-        return best
-    
-    return None
+        # Crossover: OX with validation pruning
+        children = []  # store new offspring
+        for i in range(0, pop_size, 2):
+            p1, p2 = selected[i], selected[i+1]
+            if p1 and p2: # only attempt crossover if both parents exist
+                commons = set(p1[1:-1]).intersection(p2[1:-1]) # find common intermediate nodes (exclude the fixed 'start' at both ends)
+                if commons and random.random() < crossover_rate:
+                    cut = random.choice(list(commons))
+
+                    i1 = p1.index(cut)
+                    i2 = p2.index(cut)
+                    prefix1 = p1[:i1+1]
+                    prefix2 = p2[:i2+1]
+                    raw_suffix1 = p1[i1+1:]
+                    raw_suffix2 = p2[i2+1:]
+                    suffix1 = [v for v in raw_suffix1 if v not in prefix2]
+                    suffix2 = [v for v in raw_suffix2 if v not in prefix1]
+                    child_assembled = prefix1 + suffix2
+                    child_assembled2 = prefix2 + suffix1
+                    child_repaired = repair_path(child_assembled, G, start)
+                    child_repaired2 = repair_path(child_assembled2, G, start)
+                    child = make_cycle_from_path(child_repaired)
+                    child2 = make_cycle_from_path(child_repaired2)
+
+                    if child is None:
+                        child = p1 if fitness(p1) >= fitness(p2) else p2
+                        child2 = p1 if fitness(p1) >= fitness(p2) else p2
+                else:
+                    child = p1 if fitness(p1) >= fitness(p2) else p2
+                    child2 = p1 if fitness(p1) >= fitness(p2) else p2
+
+                children.append(child)
+                children.append(child2)
+
+        # Mutation: swap-mutation on intermediate nodes
+        new_pop = [] # new generation population (after mutation step)
+        for cyc in children:  # Iterate over each child from crossover
+            if cyc and random.random() < mutation_rate:  # Apply mutation with probability = mutation_rate
+                core = cyc[1:-1] # extract the core (exclude start and end, which are both 'start')
+                if len(core) >= 2: # mutation only makes sense if there are at least 2 nodes to swap
+                    i, j = sorted(random.sample(range(len(core)), 2))  # pick two positions to swap
+                    core[i], core[j] = core[j], core[i]  # swap them (python moment)
+                mutated = make_cycle_from_path([start] + core)  # repair and close into a valid cycle (if possible)
+                if mutated:  # if repair succeeded, use the mutated cycle
+                    cyc = mutated
+            new_pop.append(cyc)  # add cycle to the new population
+        pop = new_pop 
+
+        # best
+        for cyc in pop:
+            f = fitness(cyc)
+            if f > best_fit:
+                best, best_fit = cyc, f
+                
+    return best if best_fit > 0 else None
+
 
 def grasp(G, start, k=3, iterations=10000):
     """
     1. Repeat for `iterations`:
-        a. While True:
-            - Create list of unvisited neighbours of current node
-            - If list is empty:
-                + If current node can close the cycle, close it
-                + Break loop
-            - Else:
-                + Sort list by descending degree
-                + Restricted candidate list picks the top-k nodes
-                + Pick from RCL at random, visit it and append it to the path
-        b. If a valid cycle was found and is longer than the current longest, update it
+        - While True:
+            + Create list of unvisited neighbours of current node
+            + If list is empty:
+                # If current node can close the cycle, close it
+                # Break loop
+            + Else:
+                # Sort neighbours by descending degree (more connected first)
+                # Restricted candidate list (RCL) picks top-k nodes
+                # Pick from RCL at random, visit and append to path
+        - If a valid cycle was found and is longer than current best, update it
     2. Return the longest cycle found (or None if no cycle of length ≥ 3 was ever found)
     """
 
     best_cycle = []
-    
+
     for _ in range(iterations):
         visited = {start}
         path = [start]
         cycle = None
-        
+
         while True:
             curr = path[-1]
             cands = [w for w in G.neighbors(curr) if w not in visited]
-            
+
             if not cands:
                 if start in G.neighbors(curr) and len(path) >= 3:
                     cycle = path + [start]
                 break
-            
+
             cands.sort(key=lambda x: G.degree(x), reverse=True)
-            rcl = cands[:k] 
+            rcl = cands[:k]
             nxt = random.choice(rcl)
             visited.add(nxt)
             path.append(nxt)
 
         if cycle and len(cycle) > len(best_cycle):
             best_cycle = cycle
-    
+
     return best_cycle if best_cycle else None
+
 
 def greedy_dfs_cycle(G, start):
     """
     1. While True:
-       a Create list of unvisited neighbours of current node
-       b. If the list is not empty
-            - Choose the node of highest degree
-            - Append it to path and mark it as visited
-          Else:
-            - Try to return a closeable cycle
-            - If none close a cycle, return None.
+        - Create list of unvisited neighbours of current node
+        - If the list is not empty:
+            + Choose the node of highest degree
+            + Append it to path and mark it as visited
+        - Else:
+            + Try to return a closeable cycle
+            + If none, return None
 
-    Special note from author: worst than all of them, this monstrosity takes the crown. This is abhorent!
+    Special note from author: worse than all of them, this monstrosity takes the crown. Abhorrent!
     """
 
     visited = {start}
@@ -470,7 +490,6 @@ def greedy_dfs_cycle(G, start):
 
     while True:
         curr = path[-1]
-
         cands = [w for w in G.neighbors(curr) if w not in visited]
 
         if cands:
@@ -483,6 +502,7 @@ def greedy_dfs_cycle(G, start):
             return path + [start]
 
         return None
+
     
 # kinda cursed kinda bad, maybe one day i fix these 3 algorithms, but that day is not today!
 
@@ -810,7 +830,7 @@ def main():
         elif choice == '2':
             print("\nSelect algorithm(s) ('all' to run all) (comma separated):")
             print("  1- Brute Force (this may take forever)")
-            print("  2- Branch-and-Bound (this may take *almost* forever)")
+            print("  2- Branch-and-Bound (this may take a long time)")
             print("  3- Greedy")
             algs = input(" > ").strip().lower()
 
@@ -859,21 +879,29 @@ def main():
                 print(f"Node '{start}' not in graph.")
                 sys.exit(1)
 
-            print("Select algorithm(s) to run (comma separated) ('all' run all (NOT RECOMMENDED)): ")
+            print("Select algorithm(s) to run (comma separated) ('WIP' to see WIP options) ('all' to run all 'nobf' to run all except brute force): ")
             print("  1- Brute Force")
             print("  2- Branch-and-Bound")
             print("  3- Genetic Algorithm")
             print("  4- Greedy DFS")
             print("  5- Greedy Random-Restart")
-            print("  6- Simulated Annealing (use only in complete graphs) (WIP)")
-            print("  7- Tabu Search (WIP)")
-            print("  8- Ant Colony (WIP)")
+
             algs = input(" > ").strip().lower()
 
-            valid = {"1","2","3","4","5","6","7","8"}
+            valid = {"1","2","3","4","5"}
+
+            if algs == "wip":
+                valid = {"1","2","3","4","5","6","7","8"}
+                print("  6- Simulated Annealing (WIP)")
+                print("  7- Tabu Search (WIP)")
+                print("  8- Ant Colony (WIP)")
+                algs = input(" > ").strip().lower()
+
 
             if algs == "all":
                 algs = sorted(valid)
+            elif algs == "nobf":
+                algs = {"2", "3", "4", "5"}
             else:
                 algs = sorted(token for token in algs.replace(" ", "").split(",") if token in valid)
 
