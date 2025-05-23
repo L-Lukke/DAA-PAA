@@ -799,7 +799,7 @@ def main():
         print("Select functionality:")
         print("  1- Draw Graph")
         print("  2- Minimum 1-Dominating Set")
-        print("  3- Cyclic Longest Simple Path")
+        print("  3- Longest Simple Cycle")
         print("  4- Exit")
         choice = input(" > ").strip()
         
@@ -903,7 +903,7 @@ def main():
                 "8": "Ant Colony",
             }
 
-            print("\n--- Longest Simple Path ---\n")
+            print("\n--- Longest Simple Cycle ---\n")
 
             for key in algs:
                 func = funcs[key]
