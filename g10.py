@@ -889,6 +889,7 @@ def main():
             algs = input(" > ").strip().lower()
 
             valid = {"1","2","3","4","5"}
+            valid_except_bf = {"2", "3", "4", "5"}
 
             if algs == "wip":
                 valid = {"1","2","3","4","5","6","7","8"}
@@ -901,7 +902,7 @@ def main():
             if algs == "all":
                 algs = sorted(valid)
             elif algs == "nobf":
-                algs = {"2", "3", "4", "5"}
+                algs = sorted(valid_except_bf)
             else:
                 algs = sorted(token for token in algs.replace(" ", "").split(",") if token in valid)
 
