@@ -7,6 +7,18 @@ from collections import deque
 import networkx as nx
 import tkinter as tk
 
+cor_map = {
+    'vermelho': 'red',
+    'azul': 'blue',
+    'verde': 'green',
+    'amarelo': 'yellow',
+    'preto': 'black',
+    'branco': 'white',
+    'laranja': 'orange',
+    'roxo': 'purple',
+    'cinza': 'gray'
+}
+
 def load_graph(stations_path, lines_path):
     G = nx.Graph()
     
@@ -35,6 +47,9 @@ def load_graph(stations_path, lines_path):
                 count = int(count_s)
             except ValueError:
                 raise ValueError(f"Invalid connection count in header: {header!r}")
+            
+            color = cor_map.get(color.lower(), color)
+
             # read exactly `count` connections
             for _ in range(count):
                 conn = f.readline()
@@ -53,10 +68,6 @@ def load_graph(stations_path, lines_path):
     
     return G
 
-# ======================================================
-# ==================== G. Interface ====================
-# ======================================================
-
 def load_stations(path):
     stations = {}
     with open(path, 'r', encoding='utf-8') as f:
@@ -67,36 +78,6 @@ def load_stations(path):
             name, xs, ys = line.split()
             stations[name] = (float(xs), float(ys))
     return stations
-
-def load_lines(path):
-    lines = []
-    current = None
-    with open(path, 'r', encoding='utf-8') as f:
-        for raw in f:
-            line = raw.strip()
-            if not line:
-                current = None
-                continue
-            parts = line.split()
-            if parts[0].lower().startswith('line'):
-                current = {'name': parts[0], 'color': parts[1], 'edges': []}
-                lines.append(current)
-            else:
-                a, b = parts[:2]
-                current['edges'].append((a, b))
-    return lines
-
-def build_visual_graph(stations, lines):
-    G = nx.Graph()
-    for name, pos in stations.items():
-        G.add_node(name, pos=pos)
-    for line in lines:
-        for a, b in line['edges']:
-            if a in stations and b in stations:
-                G.add_edge(a, b, color=line['color'], line=line['name'])
-            else:
-                print(f"Warning: skipping edge {a}-{b} (unknown station)")
-    return G
 
 def draw_on_canvas(G, stations, size=(920,920), node_r=8):
     xs = [p[0] for p in stations.values()]
@@ -125,6 +106,7 @@ def draw_on_canvas(G, stations, size=(920,920), node_r=8):
         canvas.create_oval(cx-node_r, cy-node_r, cx+node_r, cy+node_r, fill='white', outline='black')
         canvas.create_text(cx, cy-node_r-2, text=name, anchor=tk.S, font=('TkDefaultFont',8))
     root.mainloop()
+
 
 # ======================================================
 # ============== Minimum 1‐Dominating Set ==============
