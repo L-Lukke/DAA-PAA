@@ -1,135 +1,154 @@
-**Metro Graph Analysis Tool**
+# **Metro Graph Analysis Tool**
 
-This Python application provides utilities to load and visualize a metro or transit network from plain-text station and line definitions, and to analyze its structure using graph algorithms such as minimum dominating sets and longest simple cycles.
-
----
+A Python application for visualizing and analyzing metro/transit networks. It includes both exact and heuristic graph algorithms to find minimum dominating sets and the longest simple cycles in the network.
 
 ## Features
 
-1. **Graph Loading**
+### **1. Graph Loading**
 
-   * Parses station coordinates from a `stations.txt` file.
-   * Reads line definitions (station-to-station connections) from a `lines.txt` file, including line IDs and colors.
-   * Builds an undirected NetworkX graph with station nodes and edges annotated by line information.
+* Parses station coordinates from a `stations.txt` file.
+* Reads line definitions (connections) from a `lines.txt` file.
+* Supports multi-line segments with color information.
+* Builds a `NetworkX` undirected graph where:
 
-2. **Visualization**
+  * Nodes represent stations (with position).
+  * Edges include line IDs and color lists for visualization.
 
-   * Uses Tkinter to render the network on a scalable canvas.
-   * Draws colored line segments and labeled station nodes.
+### **2. Visualization**
 
-3. **Minimum 1‑Dominating Set**
+* Uses **Tkinter** to draw the metro map:
 
-   * **Brute‑force** search for the smallest set of stations that dominate the network.
-   * **Branch‑and‑Bound** optimized search with lower‑bound pruning.
-   * **Greedy** heuristic algorithm for fast approximations.
+  * Colored edges by line.
+  * Station names and coordinates are scaled to fit canvas.
+* Interactive window displays the graph layout.
 
-4. **Longest Simple Cycle**
-   Multiple strategies to find or approximate the longest simple cycle (starting and ending at a chosen station):
+### **3. Minimum 1-Dominating Set**
 
-   * Brute‑force DFS
-   * Branch‑and‑Bound with upper‑bound pruning
-   * Genetic algorithm
-   * Greedy depth‑first search
-   * GRASP (Greedy Random‑Restart)
-   * Simulated Annealing (best for complete graphs) (WIP)
-   * Tabu Search (WIP)
-   * Ant Colony Optimization (WIP)
+Finds the smallest set of stations such that every station is either in the set or adjacent to one.
 
-5. **Command‑Line Interface**
+Algorithms available:
 
-   * Menu-driven interface:
+* `Brute Force`: Guaranteed minimum but slow for large graphs.
+* `Branch and Bound`: Exact and faster using lower-bound pruning.
+* `Greedy`: Fast heuristic approximation.
 
-     1. Draw the graph
-     2. Compute minimum dominating set(s)
-     3. Compute longest simple cycle(s)
-     4. Exit
-   * Supports running individual or all algorithms, timing their execution.
+### **4. Longest Simple Cycle**
 
----
+Finds or approximates the longest simple (non-repeating) cycle starting and ending at a chosen station.
 
-## Installation and Requirements
+Algorithms:
+
+* `Brute Force DFS`
+* `Branch and Bound`
+* `Genetic Algorithm`
+* `Greedy DFS`
+* `GRASP (Greedy Random-Restart)`
+* **(WIP / Experimental)**:
+
+  * `Simulated Annealing`
+  * `Tabu Search`
+  * `Ant Colony Optimization`
+
+Each method can be run individually or in combination via CLI.
+
+### **5. Command-Line Interface**
+
+Menu-driven CLI with these options:
+
+```
+1 - Draw Graph
+2 - Minimum 1-Dominating Set
+3 - Longest Simple Cycle
+4 - Exit
+```
+
+Algorithm selection is interactive, supports running all or specific ones, and displays results with timing.
+
+## Input File Format
+
+### **stations.txt**
+
+Each line:
+
+```
+StationName  X  Y
+```
+
+* X and Y are integer coordinates.
+
+### **lines.txt**
+
+Blocks separated by blank lines. Each block:
+
+```
+<LineID>  <Color>  <Count>
+StationA  StationB
+...
+```
+
+* `Count` lines follow, each representing a station-to-station connection.
+
+## Installation
+
+**Requirements:**
 
 * Python 3.7+
-* Required packages:
+* Packages:
 
   ```bash
   pip install networkx
   ```
-* Tkinter is used for drawing; ensure your Python installation includes it (usually bundled).
-
----
+* Tkinter (included with most Python installs)
 
 ## Usage
 
-1. Prepare your data:
+Run:
 
-   * **stations.txt**: each line in the format:
+```bash
+python g10.py stations.txt lines.txt
+```
 
-     ```plaintext
-     StationName  X  Y
-     ```
+Follow the on-screen instructions to:
 
-     where `X` and `Y` are integer coordinates.
-   * **lines.txt**: blocks separated by blank lines. Each block starts with:
-
-     ```plaintext
-     <LineID>  <Color>  <Count>
-     ```
-
-     followed by `Count` lines of `StationA  StationB` pairs.
-
-2. Run the script:
-
-   ```bash
-   python main.py stations.txt lines.txt
-   ```
-
-3. Follow the on‑screen menu prompts to:
-
-   * Draw the graph window
-   * Select algorithms for dominating sets or longest cycle searches
-   * View results and timings in the console
-
----
+* View the graph
+* Compute dominating sets
+* Search for longest cycles
 
 ## Code Structure
 
-* **Graph I/O**
+### **Graph and I/O**
 
-  * `load_stations(path)`
-  * `load_lines(path)`
-  * `load_graph(stations_path, lines_path)`
-  * `build_visual_graph(stations, lines)`
+* `load_stations(path)`
+* `load_graph(stations_path, lines_path)`
 
-* **Visualization**
+### **Visualization**
 
-  * `draw_on_canvas(G, stations, size=(920,920), node_r=8)`
+* `draw_on_canvas(G, stations, size=(920, 920), node_r=8)`
 
-* **Dominating Set Algorithms**
+### **Dominating Set Algorithms**
 
-  * `brute_force_min_dominating_set(G)`
-  * `branch_and_bound_min_dominating_set(G)`
-  * `greedy_dominating_set(G)`
+* `brute_force_min_dominating_set(G)`
+* `branch_and_bound_min_dominating_set(G)`
+* `greedy_dominating_set(G)`
 
-* **Longest Cycle Algorithms**
+### **Longest Cycle Algorithms**
 
-  * `brute_force_longest_cycle(G, start)`
-  * `branch_and_bound_longest_cycle(G, start)`
-  * `genetic_longest_cycle(G, start, pop_size=20, generations=200, mutation_rate=0.2)`
-  * `greedy_dfs_cycle(G, start)`
-  * `grasp(G, start, k=3, iterations=10000)`
-  * `simulated_annealing_longest_cycle(G, start, T0=1.0, Tmin=1e-4, alpha=0.9, max_iters=1000)`
-  * `tabu_search_longest_cycle(G, start, tabu_tenure=10, max_iters=100, neigh_sample=50)`
-  * `aco_longest_cycle(G, start, num_ants=20, num_iters=100, alpha=1.0, beta=2.0, rho=0.1, Q=1.0)`
+* `brute_force_longest_cycle(G, start)`
+* `branch_and_bound_longest_cycle(G, start)`
+* `genetic_longest_cycle(G, start)`
+* `greedy_dfs_cycle(G, start)`
+* `grasp(G, start)`
+* *(WIP)* `simulated_annealing_longest_cycle(G, start)`
+* *(WIP)* `tabu_search_longest_cycle(G, start)`
+* *(WIP)* `aco_longest_cycle(G, start)`
 
-* **Main Menu**
+### **Entry Point**
 
-  * `main()` handles argument parsing and CLI interaction.
+* `main()` handles command-line interface and routing.
 
----
+## Notes & Warnings
 
-## Notes
-
-* Some algorithms (brute‑force, branch‑and‑bound) can be very slow on large networks.
-* The simulated annealing implementation assumes a complete graph; use with caution on sparse networks.
-* Simulated Annealing, Tabu Search and Ant Colony are poorly commented and implemented, I really don't know if they actually work.
+* **Brute-force** methods are slow for graphs with more than \~10 nodes.
+* **Simulated Annealing**, **Tabu Search**, and **Ant Colony** are labeled **WIP** — results may be unreliable.
+* Graph must be connected and have valid formatting for meaningful results.
+* Some pt-br color names are translated internally. (e.g., `'vermelho'` → `'red'`).
