@@ -268,22 +268,23 @@ def branch_and_bound_longest_cycle(G, start):
                 path.pop() # backtrack - removing the last step from the recursion
 
     def reachable_count(u, vis): # upper bound function: a simple BFS that counts all reachable nodes
-            seen = set(vis) # copy in all the nodes already on your current path, so you never count them again
-            q = deque([u]) # start a BFS (in the form of a double-ended queue, to pop the already explored nodes - in the left - and add its neighbours - in the right) from current node
-            seen.add(u)
-            cnt = 0
-            
-            while q:
-                x = q.popleft() # take the oldest node
-                for y in adj[x]: # iterate through its neighbours
-                    if y not in seen:
-                        seen.add(y)  # mark it so we don’t revisit it
-                        q.append(y)  # enqueue it
-                        cnt += 1 
+        seen = set(vis) # copy in all the nodes already on your current path, so you never count them again
+        q = deque([u]) # start a BFS (in the form of a double-ended queue, to pop the already explored nodes - in the left - and add its neighbours - in the right) from current node
+        seen.add(u)
+        cnt = 0
+        
+        while q:
+            x = q.popleft() # take the oldest node
+            for y in adj[x]: # iterate through its neighbours
+                if y not in seen:
+                    seen.add(y)  # mark it so we don’t revisit it
+                    q.append(y)  # enqueue it
+                    cnt += 1 
 
-            return cnt
+        return cnt
     
-    dfs([start])    
+    dfs([start])
+
     return best['path'] + [start] if best['path'] and start in adj[best['path'][-1]] else None
 
 def genetic_longest_cycle(G, start, pop_size=50, generations=300, crossover_rate=0.8, mutation_rate=0.2):
